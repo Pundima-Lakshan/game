@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <windows.h>
 
 #define global_variable static
@@ -6,32 +7,62 @@
 global_variable bool Running = 0;
 global_variable BITMAPINFO bitMapInfo;
 global_variable void *bitMapMemory;
-global_variable HBITMAP bitMapHandle;
-global_variable HDC bitMapDeviceContext;
+
+global_variable int bitMapWidth;
+global_variable int bitMapHeight;
 
 void Win32ResizeDIBSection(int width, int height) {
-  if (bitMapHandle) {
-    DeleteObject(&bitMapHandle);
+
+  if (bitMapMemory) {
+    VirtualFree(bitMapMemory, 0, MEM_RELEASE);
   }
 
-  if (!bitMapDeviceContext) {
-    bitMapDeviceContext = CreateCompatibleDC(0);
-  }
+  bitMapWidth = width;
+  bitMapHeight = height;
+  int bytesPerPixel = 4;
+  int bitMapMemorySize = bitMapWidth * bitMapHeight * bytesPerPixel;
 
   bitMapInfo.bmiHeader.biSize = sizeof(bitMapInfo.bmiHeader);
-  bitMapInfo.bmiHeader.biWidth = width;
-  bitMapInfo.bmiHeader.biHeight = height;
+  bitMapInfo.bmiHeader.biWidth = bitMapWidth;
+  bitMapInfo.bmiHeader.biHeight = -bitMapHeight;
   bitMapInfo.bmiHeader.biPlanes = 1;
   bitMapInfo.bmiHeader.biBitCount = 32;
   bitMapInfo.bmiHeader.biCompression = BI_RGB;
 
-  CreateDIBSection(bitMapDeviceContext, &bitMapInfo, DIB_RGB_COLORS,
-                   &bitMapMemory, 0, 0);
+  bitMapMemory = VirtualAlloc(0, bitMapMemorySize, MEM_RESERVE | MEM_COMMIT,
+                              PAGE_READWRITE);
+
+  uint8_t *row = (uint8_t *)bitMapMemory;
+  int pitch = bitMapWidth * bytesPerPixel;
+  for (int y = 0; y < bitMapHeight; ++y) {
+    uint8_t *pixel = (uint8_t *)row;
+    for (int x = 0; x < bitMapWidth; ++x) {
+
+      // pixel in memory
+      // BB GG RR xx
+
+      *pixel = 0;
+      ++pixel;
+
+      *pixel = 255;
+      ++pixel;
+
+      *pixel = 0;
+      ++pixel;
+
+      *pixel = 0;
+      ++pixel;
+    }
+    row += pitch;
+  }
 }
 
-void Win32UpdateWindow(HDC hdc, int x, int y, int width, int height) {
-  StretchDIBits(hdc, x, y, width, height, x, y, width, height, &bitMapMemory,
-                &bitMapInfo, DIB_RGB_COLORS, SRCCOPY);
+void Win32UpdateWindow(HDC hdc, RECT *clientRect) {
+  int windowWidth = clientRect->right - clientRect->left;
+  int windowHeight = clientRect->bottom - clientRect->top;
+  StretchDIBits(hdc, 0, 0, windowWidth, windowHeight, 0, 0, bitMapWidth,
+                bitMapHeight, bitMapMemory, &bitMapInfo, DIB_RGB_COLORS,
+                SRCCOPY);
 }
 
 LRESULT Win32Wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -42,8 +73,8 @@ LRESULT Win32Wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   case WM_SIZE: {
     RECT clientRect;
     GetClientRect(hWnd, &clientRect);
-    int width = clientRect.right = clientRect.left;
-    int height = clientRect.bottom = clientRect.top;
+    int width = clientRect.right - clientRect.left;
+    int height = clientRect.bottom - clientRect.top;
     Win32ResizeDIBSection(width, height);
     OutputDebugStringA("WM_SIZE\n");
   } break;
@@ -65,11 +96,12 @@ LRESULT Win32Wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   case WM_PAINT: {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hWnd, &ps);
-    int x = ps.rcPaint.left;
-    int y = ps.rcPaint.top;
-    int width = ps.rcPaint.right - ps.rcPaint.left;
-    int height = ps.rcPaint.bottom - ps.rcPaint.top;
-    Win32UpdateWindow(hdc, x, y, width, height);
+
+    RECT clientRect;
+    GetClientRect(hWnd, &clientRect);
+
+    Win32UpdateWindow(hdc, &clientRect);
+
     EndPaint(hWnd, &ps);
   } break;
 
