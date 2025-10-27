@@ -5,11 +5,38 @@
 #define local_variable static
 
 global_variable bool Running = 0;
+global_variable int bytesPerPixel = 4;
 global_variable BITMAPINFO bitMapInfo;
 global_variable void *bitMapMemory;
 
 global_variable int bitMapWidth;
 global_variable int bitMapHeight;
+
+void RenderWeirdGradient(int xOffset, int yOffset) {
+  uint8_t *row = (uint8_t *)bitMapMemory;
+  int pitch = bitMapWidth * bytesPerPixel;
+  for (int y = 0; y < bitMapHeight; ++y) {
+    uint8_t *pixel = (uint8_t *)row;
+    for (int x = 0; x < bitMapWidth; ++x) {
+
+      // pixel in memory
+      // BB GG RR xx
+
+      *pixel = (uint8_t)(x + xOffset);
+      ++pixel;
+
+      *pixel = (uint8_t)(y + yOffset);
+      ++pixel;
+
+      *pixel = 0;
+      ++pixel;
+
+      *pixel = 0;
+      ++pixel;
+    }
+    row += pitch;
+  }
+}
 
 void Win32ResizeDIBSection(int width, int height) {
 
@@ -19,7 +46,6 @@ void Win32ResizeDIBSection(int width, int height) {
 
   bitMapWidth = width;
   bitMapHeight = height;
-  int bytesPerPixel = 4;
   int bitMapMemorySize = bitMapWidth * bitMapHeight * bytesPerPixel;
 
   bitMapInfo.bmiHeader.biSize = sizeof(bitMapInfo.bmiHeader);
@@ -31,30 +57,6 @@ void Win32ResizeDIBSection(int width, int height) {
 
   bitMapMemory = VirtualAlloc(0, bitMapMemorySize, MEM_RESERVE | MEM_COMMIT,
                               PAGE_READWRITE);
-
-  uint8_t *row = (uint8_t *)bitMapMemory;
-  int pitch = bitMapWidth * bytesPerPixel;
-  for (int y = 0; y < bitMapHeight; ++y) {
-    uint8_t *pixel = (uint8_t *)row;
-    for (int x = 0; x < bitMapWidth; ++x) {
-
-      // pixel in memory
-      // BB GG RR xx
-
-      *pixel = 0;
-      ++pixel;
-
-      *pixel = 255;
-      ++pixel;
-
-      *pixel = 0;
-      ++pixel;
-
-      *pixel = 0;
-      ++pixel;
-    }
-    row += pitch;
-  }
 }
 
 void Win32UpdateWindow(HDC hdc, RECT *clientRect) {
@@ -123,17 +125,32 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline,
   wc.lpszClassName = "GameWindowClass";
 
   if (RegisterClassA(&wc)) {
-    HWND hWnd = CreateWindowEx(0, wc.lpszClassName, "Game",
+    HWND hWnd = CreateWindowEx(0, wc.lpszClassName, "Game", 
                                WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT,
                                CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0,
                                0, hInst, 0);
 
     if (hWnd) {
+      int xOffset = 0;
+      int yOffset = 0;
       Running = true;
       MSG msg = {};
-      while (Running && GetMessageA(&msg, NULL, 0, 0) > 0) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+      while(Running) {
+        while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+          if (msg.message == WM_QUIT) {
+            Running = false;
+          }
+          TranslateMessage(&msg);
+          DispatchMessage(&msg);
+        }
+        RenderWeirdGradient(xOffset, yOffset);
+        ++xOffset;
+
+        HDC hdc = GetDC(hWnd);
+        RECT clientRect;
+        GetClientRect(hWnd, &clientRect);
+        Win32UpdateWindow(hdc, &clientRect);
+        ReleaseDC(hWnd, hdc);
       }
     } else {
       return -1;
