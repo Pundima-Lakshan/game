@@ -1,0 +1,7 @@
+BasedOnStyle: LLVM
+BinPackArguments: false 
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AlignAfterOpenBracket: true
+BreakBeforeBraces: Allman
+BinPackLongBracedList: false
