@@ -1,3 +1,3 @@
 CALL .\build.bat
 
-.\build\main.exe
+.\build\win32_game.exe

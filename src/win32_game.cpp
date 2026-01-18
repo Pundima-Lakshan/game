@@ -4,6 +4,10 @@
 #define global_variable static
 #define local_variable static
 
+
+
+
+
 struct win32_offscreen_buffer
 {
   int bytesPerPixel;
@@ -13,14 +17,26 @@ struct win32_offscreen_buffer
   int height;
 };
 
+
+
+
+
 struct win32_window_dimensions
 {
   int width;
   int height;
 };
 
+
+
+
+
 global_variable bool globalRunning = 0;
 global_variable win32_offscreen_buffer buffer;
+
+
+
+
 
 win32_window_dimensions Win32GetWindowDimension(HWND hWnd)
 {
@@ -34,6 +50,10 @@ win32_window_dimensions Win32GetWindowDimension(HWND hWnd)
   return dimensions;
 }
 
+
+
+
+
 void RenderWeirdGradient(win32_offscreen_buffer *buffer,
                          int xOffset,
                          int yOffset)
@@ -45,7 +65,6 @@ void RenderWeirdGradient(win32_offscreen_buffer *buffer,
     uint8_t *pixel = (uint8_t *)row;
     for (int x = 0; x < buffer->width; ++x)
     {
-
       // pixel in memory
       // BB GG RR xx
 
@@ -64,6 +83,10 @@ void RenderWeirdGradient(win32_offscreen_buffer *buffer,
     row += pitch;
   }
 }
+
+
+
+
 
 void Win32ResizeDIBSection(win32_offscreen_buffer *buffer,
                            int width,
@@ -92,6 +115,10 @@ void Win32ResizeDIBSection(win32_offscreen_buffer *buffer,
                                 PAGE_READWRITE);
 }
 
+
+
+
+
 void Win32CopyBufferToWindow(win32_offscreen_buffer *buffer,
                              HDC hdc,
                              int windowWidth,
@@ -112,13 +139,16 @@ void Win32CopyBufferToWindow(win32_offscreen_buffer *buffer,
                 SRCCOPY);
 }
 
+
+
+
+
 LRESULT Win32Wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   LRESULT result = 0;
 
   switch (uMsg)
   {
-
   case WM_SIZE:
   {
   }
@@ -166,6 +196,10 @@ LRESULT Win32Wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   return result;
 }
+
+
+
+
 
 int APIENTRY WinMain(HINSTANCE hInst,
                      HINSTANCE hInstPrev,
